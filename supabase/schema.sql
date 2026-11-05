@@ -21,12 +21,22 @@ create or replace function public.handle_new_seifco_user()
 returns trigger language plpgsql security definer set search_path = public
 as $$
 declare new_shop uuid;
+declare invited_shop uuid;
+declare invited_role text;
 begin
-  insert into public.shops(name, owner_id)
-  values ('سيفكو فون', new.id)
-  returning id into new_shop;
-  insert into public.profiles(id, shop_id, display_name, role)
-  values (new.id, new_shop, coalesce(new.raw_user_meta_data->>'display_name','مدير المحل'), 'admin');
+  invited_shop := nullif(new.raw_app_meta_data->>'shop_id','')::uuid;
+  invited_role := coalesce(new.raw_app_meta_data->>'role','');
+  if invited_shop is not null and invited_role = 'employee'
+     and exists(select 1 from public.shops where id=invited_shop) then
+    insert into public.profiles(id, shop_id, display_name, role)
+    values (new.id, invited_shop, coalesce(new.raw_user_meta_data->>'display_name','موظف'), 'employee');
+  else
+    insert into public.shops(name, owner_id)
+    values ('سيفكو فون', new.id)
+    returning id into new_shop;
+    insert into public.profiles(id, shop_id, display_name, role)
+    values (new.id, new_shop, coalesce(new.raw_user_meta_data->>'display_name','مدير المحل'), 'admin');
+  end if;
   return new;
 end;
 $$;
