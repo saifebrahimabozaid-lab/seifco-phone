@@ -63,4 +63,27 @@ document.getElementById('tabs').addEventListener('click',e=>{const b=e.target.cl
 document.getElementById('menu').onclick=()=>{document.getElementById('sidebar').classList.add('open');document.getElementById('backdrop').classList.add('show')};document.getElementById('backdrop').onclick=()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('backdrop').classList.remove('show')};
 </script>
 <script>if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));</script>
-</body></html>
+
+<script>
+(()=> {
+ const modal=document.getElementById('accountModal'),open=document.getElementById('accountButton'),status=document.getElementById('accountStatus'),form=document.getElementById('accountForm');
+ const show=()=>{modal.style.display='flex';refresh()};
+ const hide=()=>{modal.style.display='none'};
+ const refresh=()=>{const s=window.SeifcoBackend.status();open.textContent=s.signedIn?'الحساب: '+s.email:'تسجيل الدخول';status.textContent=s.signedIn?'تم تسجيل الدخول محليًا. جارٍ استخدام حسابك عند الاتصال.':'غير مسجل الدخول.'};
+ open.addEventListener('click',show);
+ document.getElementById('closeAccount').addEventListener('click',hide);
+ modal.addEventListener('click',e=>{if(e.target===modal)hide()});
+ form.addEventListener('submit',async e=>{
+  e.preventDefault();const mode=e.submitter?.dataset.mode||'login',fd=new FormData(form),email=String(fd.get('email')||'').trim(),password=String(fd.get('password')||''),name=String(fd.get('display_name')||'').trim();
+  status.textContent='جارٍ الاتصال...';
+  try{
+   if(mode==='signup'){const result=await window.SeifcoBackend.signUp(email,password,name);status.textContent=result.access_token?'تم إنشاء الحساب وتسجيل الدخول.':'تم إنشاء الحساب. إذا كان تأكيد البريد مفعّلًا، افتح رسالة التأكيد ثم سجّل الدخول.'}
+   else{await window.SeifcoBackend.signIn(email,password);const p=await window.SeifcoBackend.profile();status.textContent=p?'تم تسجيل الدخول — الصلاحية: '+(p.role==='admin'?'مدير':'موظف'):'تم الدخول لكن لم يتم العثور على ملف المحل. راجع إعداد قاعدة البيانات.'}
+   refresh();
+  }catch(err){status.textContent='تعذر إكمال العملية: '+err.message}
+ });
+ document.getElementById('logoutButton').addEventListener('click',async()=>{try{await window.SeifcoBackend.signOut();status.textContent='تم تسجيل الخروج.';refresh()}catch(err){status.textContent='تعذر تسجيل الخروج: '+err.message}});
+ refresh();
+})();
+</script>
+\n</body></html>
