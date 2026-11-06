@@ -9,23 +9,24 @@ function put(s,v){return new Promise((ok,no)=>{let q=db.transaction(s,'readwrite
 function del(s,id){return new Promise((ok,no)=>{let q=db.transaction(s,'readwrite').objectStore(s).delete(+id);q.onsuccess=()=>ok();q.onerror=()=>no(q.error)})}
 function getOne(s,id){return new Promise((ok,no)=>{let q=db.transaction(s).objectStore(s).get(+id);q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error)})}
 async function scanBarcode(onDetected){
- if(!window.Html5Qrcode){alert('قارئ الباركود لم يتم تحميله. افتح التطبيق بالإنترنت مرة واحدة ثم أعد المحاولة.');return}
- const modal=document.createElement('div');modal.style='position:fixed;inset:0;z-index:1000;background:#071629ef;display:flex;align-items:center;justify-content:center;padding:16px';
- modal.innerHTML='<div style="background:white;border-radius:14px;padding:16px;width:min(520px,100%);text-align:center"><h3 style="margin:0 0 12px">وجّه الكاميرا إلى الباركود</h3><div id="seifco-reader" style="width:100%;min-height:250px"></div><p style="font-size:12px;color:#667">قرّب الباركود وثبّت الموبايل حتى تتم القراءة</p><button type="button" class="action danger" id="stopBarcode">إغلاق الكاميرا</button></div>';
- document.body.appendChild(modal);let scanner=null,stopped=false,starting=true;
+ if(!window.Html5Qrcode||!window.Html5QrcodeSupportedFormats){alert('مكتبة قراءة الأكواد لم يتم تحميلها. اتصل بالإنترنت وافتح التطبيق مرة واحدة ثم أعد المحاولة.');return}
+ const modal=document.createElement('div');modal.style='position:fixed;inset:0;z-index:1000;background:#071629ef;display:flex;align-items:center;justify-content:center;padding:12px';
+ modal.innerHTML='<div style="background:white;border-radius:14px;padding:14px;width:min(560px,100%);text-align:center"><h3 style="margin:0 0 10px">امسح الباركود أو QR</h3><div id="seifco-reader" style="width:100%;min-height:280px"></div><p style="font-size:12px;color:#667;margin:10px 0">خلّي الكود داخل إطار الكاميرا، وجرّب تقرّب أو تبعّد الموبايل قليلًا</p><button type="button" class="action danger" id="stopBarcode">إغلاق الكاميرا</button></div>';
+ document.body.appendChild(modal);let scanner=null,stopped=false,starting=true,handled=false;
  const stop=async()=>{if(stopped)return;stopped=true;try{if(scanner&&scanner.isScanning)await scanner.stop();if(scanner)scanner.clear()}catch(e){}modal.remove()};
  modal.querySelector('#stopBarcode').onclick=stop;
  try{
-  const formats=['EAN_13','EAN_8','UPC_A','UPC_E','CODE_128','CODE_39','ITF','QR_CODE'].map(k=>Html5QrcodeSupportedFormats[k]).filter(v=>v!==undefined);
-  scanner=new Html5Qrcode('seifco-reader',{formatsToSupport:formats,verbose:false});
+  const names=['QR_CODE','EAN_13','EAN_8','UPC_A','UPC_E','CODE_128','CODE_39','ITF','CODABAR','DATA_MATRIX','AZTEC','PDF_417'];
+  const formats=names.map(k=>Html5QrcodeSupportedFormats[k]).filter(v=>v!==undefined);
+  scanner=new Html5Qrcode('seifco-reader',{formatsToSupport:formats,verbose:false,experimentalFeatures:{useBarCodeDetectorIfSupported:true}});
   const cameras=await Html5Qrcode.getCameras();if(stopped)return;
   if(!cameras.length)throw new Error('لم يتم العثور على كاميرا');
   const back=cameras.find(x=>/back|rear|environment|خلف/i.test(x.label||''))||cameras[cameras.length-1];
-  await scanner.start(back.id,{fps:12,qrbox:{width:Math.min(300,Math.floor(Math.min(window.innerWidth-90,360))),height:120},aspectRatio:1.777},async decoded=>{
-   if(stopped||starting)return;await stop();onDetected(String(decoded).trim());
+  await scanner.start(back.id,{fps:20,aspectRatio:1.777,videoConstraints:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}},async(decoded)=>{
+   if(stopped||starting||handled)return;handled=true;const value=String(decoded).trim();await stop();onDetected(value);
   },()=>{});
   starting=false;
- }catch(e){await stop();alert('تعذر تشغيل قارئ الباركود: '+(e.message||'تأكد من إذن الكاميرا واستخدم Chrome عبر HTTPS.'))}
+ }catch(e){await stop();alert('تعذر تشغيل الكاميرا: '+(e.message||'اسمح للمتصفح باستخدام الكاميرا وافتح الرابط عبر HTTPS.'))}
 }
 function table(rows,cols,store){if(!rows.length)return '<div class="empty">لا توجد سجلات حتى الآن</div>';let limit=tableLimits[store]||PAGE_SIZE,ordered=rows.slice().reverse(),shown=ordered.slice(0,limit);return '<div class="tablewrap"><table><tr>'+cols.map(c=>'<th>'+c[1]+'</th>').join('')+'<th>إجراء</th></tr>'+shown.map(r=>'<tr>'+cols.map(c=>'<td>'+esc(c[2](r))+'</td>').join('')+'<td><button class="action danger" data-delete="'+store+'" data-id="'+r.id+'">حذف</button></td></tr>').join('')+'</table></div>'+(ordered.length>limit?'<button class="action" data-more="'+store+'">عرض المزيد ('+(ordered.length-limit)+')</button>':'')}
 function form(title,fields,button='حفظ'){return '<div class="panel"><h2>'+title+'</h2><form class="dataform"><div class="formgrid">'+fields.map(f=>'<div class="field"><label>'+f.label+'</label><div style="display:flex;gap:6px"><input name="'+f.name+'" type="'+(f.type||'text')+'" '+(f.required===false?'':'required')+' '+(f.min!==undefined?'min="'+f.min+'"':'')+' '+(f.step?'step="'+f.step+'"':'')+' placeholder="'+(f.placeholder||'')+'">'+(f.name==='code'?'<button type="button" class="action" data-scan-product title="مسح الباركود بالكاميرا">📷</button>':'')+'</div></div>').join('')+'</div><button class="action primary">'+button+'</button></form></div>'}
