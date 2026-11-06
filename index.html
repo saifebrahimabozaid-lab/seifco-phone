@@ -35,14 +35,28 @@
 </aside>
 <div class="backdrop" id="backdrop"></div>
 <main class="main">
- <header class="topbar"><div style="display:flex;align-items:center;gap:12px"><button class="menu" id="menu">☰</button><div class="crumb">سيفكو فون　/　<b id="crumb">نظرة عامة</b></div></div><div class="date" id="today"></div></header>
+ <header class="topbar"><div style="display:flex;align-items:center;gap:12px"><button class="menu" id="menu">☰</button><div class="crumb">سيفكو فون　/　<b id="crumb">نظرة عامة</b></div></div><div style="display:flex;align-items:center;gap:8px"><button class="action" id="accountButton" type="button">تسجيل الدخول</button><div class="date" id="today"></div></div></header>
  <div class="content">
   <div class="welcome"><div><div class="eyebrow">إدارة محلك في مكان واحد</div><h1 id="welcomeTitle">أهلاً بيك في سيفكو فون 👋</h1><p>تابع حركة محلك ومبيعاتك ومصروفاتك من مكان واحد.</p></div><div class="actions"><button class="action" onclick="document.querySelector('[data-tab=products]').click()">＋ إضافة منتج</button><button class="action primary" onclick="document.querySelector('[data-tab=sales]').click()">＋ فاتورة بيع جديدة</button></div></div>
   <section id="view"></section>
   <footer>© 2026 سيفكو فون　·　ومن يتق الله يجعل له مخرجاً ويرزقه من حيث لا يحتسب</footer>
  </div>
 </main></div>
-<script src="app.js"></script>
+
+<div id="accountModal" style="display:none;position:fixed;inset:0;background:#102b5077;z-index:30;align-items:center;justify-content:center;padding:18px">
+ <div style="background:#fff;border-radius:14px;padding:22px;width:min(430px,100%);box-shadow:0 15px 50px #0003">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0 0 12px;font-size:18px">حساب سيفكو فون</h2><button class="action" id="closeAccount" type="button">إغلاق</button></div>
+  <p class="muted">أنشئ حساب المدير أول مرة، أو سجّل الدخول بحساب موجود. يلزم الاتصال بالإنترنت لهذه الخطوة.</p>
+  <form id="accountForm">
+   <div class="field"><label>الاسم (للحساب الجديد)</label><input name="display_name" autocomplete="name" placeholder="اسم المدير"></div>
+   <div class="field"><label>البريد الإلكتروني</label><input name="email" type="email" autocomplete="username" required></div>
+   <div class="field"><label>كلمة المرور</label><input name="password" type="password" autocomplete="current-password" minlength="6" required></div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="action primary" type="submit" data-mode="login">تسجيل الدخول</button><button class="action" type="submit" data-mode="signup">إنشاء حساب مدير</button><button class="action danger" type="button" id="logoutButton">تسجيل الخروج</button></div>
+  </form>
+  <p id="accountStatus" class="muted" aria-live="polite"></p>
+ </div>
+</div>
+\n<script src="supabase-config.js"></script>\n<script src="supabase-auth.js"></script>\n<script src="app.js"></script>
 <script>
 document.getElementById('today').textContent=new Date().toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long'});
 document.getElementById('tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(!b)return;document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x===b));document.getElementById('crumb').textContent=b.textContent.trim();document.getElementById('welcomeTitle').textContent=b.dataset.tab==='home'?'أهلاً بيك في سيفكو فون 👋':b.textContent.trim();document.getElementById('sidebar').classList.remove('open');document.getElementById('backdrop').classList.remove('show')});
